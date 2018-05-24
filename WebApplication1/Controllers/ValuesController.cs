@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using DocumentFormat.OpenXml.Office2010.Word;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 using Microsoft.AspNetCore.Mvc;
@@ -47,7 +48,8 @@ namespace WebApplication1.Controllers
 
                 //insert content control, find and replace text in content control.
                 this.InsertContentControl(body, "=fullname", "Beispiel Text");
-                this.ReplaceTextInContentControlByTag(doc, "=fullname", vorname + " " + nachname);
+                this.ReplaceTextInContentControlByTag(body, "=fullname", vorname + " " + nachname);
+                this.InsertCheckbox(body);
 
                 //create paragraph, apply custom style
                 Paragraph paragraph = new Paragraph(new Run(new Text("Paragraph Style")));
@@ -62,6 +64,44 @@ namespace WebApplication1.Controllers
 
                 doc.Save();
             }
+        }
+
+        private void InsertCheckbox(Body body)
+        {
+            SdtRun sdtRun1 = new SdtRun();
+
+            SdtProperties sdtProperties1 = new SdtProperties();
+            SdtId sdtId1 = new SdtId() { Val = -1636166143 };
+
+            SdtContentCheckBox sdtContentCheckBox1 = new SdtContentCheckBox();
+            DocumentFormat.OpenXml.Office2010.Word.Checked checked1 = new DocumentFormat.OpenXml.Office2010.Word.Checked() { Val = OnOffValues.Zero };
+            CheckedState checkedState1 = new CheckedState() { Font = "MS Gothic", Val = "2612" };
+            UncheckedState uncheckedState1 = new UncheckedState() { Font = "MS Gothic", Val = "2610" };
+
+            sdtContentCheckBox1.Append(checked1);
+            sdtContentCheckBox1.Append(checkedState1);
+            sdtContentCheckBox1.Append(uncheckedState1);
+
+            sdtProperties1.Append(sdtId1);
+            sdtProperties1.Append(sdtContentCheckBox1);
+
+            SdtContentRun sdtContentRun1 = new SdtContentRun();
+
+            Run run1 = new Run();
+
+            RunProperties runProperties1 = new RunProperties();
+            RunFonts runFonts1 = new RunFonts() { Hint = FontTypeHintValues.EastAsia, Ascii = "MS Gothic", HighAnsi = "MS Gothic", EastAsia = "MS Gothic" };
+
+            runProperties1.Append(runFonts1);
+            Text text1 = new Text();
+            text1.Text = "☐";
+
+            run1.Append(runProperties1);
+            run1.Append(text1);
+
+            sdtContentRun1.Append(run1);
+
+            body.AppendChild(sdtContentRun1);
         }
 
         private void ApplyStyleById(WordprocessingDocument doc, Paragraph paragraph, string styleId)
@@ -86,9 +126,9 @@ namespace WebApplication1.Controllers
             pPr.ParagraphStyleId.Val = styleId;
         }
 
-        private WordprocessingDocument ReplaceTextInContentControlByTag(WordprocessingDocument doc, string contentControlTag, string text)
+        private void ReplaceTextInContentControlByTag(Body body, string contentControlTag, string text)
         {
-            SdtElement element = doc.MainDocumentPart.Document.Body.Descendants<SdtElement>()
+            SdtElement element = body.Descendants<SdtElement>()
               .FirstOrDefault(sdt => sdt.SdtProperties.GetFirstChild<Tag>()?.Val == contentControlTag);
 
             if (element == null)
@@ -96,8 +136,6 @@ namespace WebApplication1.Controllers
 
             element.Descendants<Text>().First().Text = text;
             element.Descendants<Text>().Skip(1).ToList().ForEach(t => t.Remove());
-
-            return doc;
         }
 
         private void InsertContentControl(Body body, string tag, string contentText)
